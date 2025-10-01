@@ -3,7 +3,7 @@ Mục đích: Phát triển một bàn phím thông minh để thực thi các t
 
 Thành phần chính:
 - Vi điều khiển trung tâm: ATMEGA 328P.
-- Thiết bị nhập liệu: Bàn phím ma trận 4x4 và 2 bộ mã hóa vòng xoay (encoder).
+- Thiết bị nhập liệu: Bàn phím ma trận 4x4 và 2 bộ encoder.
 - Nguyên lý hoạt động:
   + Vi điều khiển (MCU) đọc dữ liệu đầu vào từ bàn phím và encoder.
   + Dữ liệu được truyền đến PC/Laptop thông qua giao tiếp UART.
