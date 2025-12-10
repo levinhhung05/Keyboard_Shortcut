@@ -1,14 +1,14 @@
 #define ENCODER_DO_NOT_USE_INTERRUPTS
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <Encoder.h>
+#include "lib/Encoder/Encoder.h"
 //-----------------------------------------------------------------------------------------------
 
 void IO_Init(){
   //SET PORTB AS INPUT  FOR KEYPAD  3*2
-  DDRB  |= (1<<PB0)|(1<<PB1)|(1<<PB2); //PB0:2 = OUTPUT
-  DDRB  &=  ~( (1<<PB3)|(1<<PB4) );    //PB3:4 = INPUT
-  PORTB = 0XFF;
+  DDRB  |= (1<<PB0) | (1<<PB1) | (1<<PB2) | (1<<PB3);         //PB0:3 = OUTPUT
+  DDRC  &=  ~((1<<PC0) | (1<<PC1) | (1<<PC2) | (1<<PC3));     //PC0:3 = INPUT
+  PORTC |= (1<<PC0) | (1<<PC1) | (1<<PC2) | (1<<PC3);
   //SET PORTD AS INPUT FOR ROTATE ENCODER 
   //PD2: INT0 FOR CLK ENCODER 1
   //PD3: INT1 FOR CLK ENCODER 2
@@ -18,31 +18,34 @@ void IO_Init(){
   PORTD = 0XFF;
 }
 //-------------------------------------------------------------
-uint8_t last_key_state = 0; // Trạng thái cuối cùng của phím
-uint8_t key_state = 0; // Trạng thái hiện tại của phím
+uint8_t last_key_state = 0; 
+uint8_t key_state = 0; 
 
 int8_t Keypad_Scan() {
-	
-	uint8_t col_mask = 0b11111011; // initial row mask
-	int8_t scan_col;			//scanning col index
-	
-	//DDRB = 0x07; // set upper 4 bits of PORTA as input with pull-up, lower 4 bits as output
-	//PORTB = 0xFF;//enable pullup resistor on the input pin
+    // COL = PB0..PB3 (output)
+    // ROW = PC0..PC3 (input + pullup)
 
-	for (scan_col=2;scan_col>=0;scan_col--) {
-		PORTB = col_mask; // scan current col
-		_delay_us(1); // wait for stable input
+    // Set all COL pins HIGH
+    PORTB |= 0x0F;  // PB0..PB3 = 1
 
-		if ((PINB & (1 << PINB3)) == 0) { // check row 0
-			return  (scan_col) ; // calculate key value as (row index * 4) + column index
-			} 
-		else if ((PINB & (1 << PINB4)) == 0) { // check row 1
-			return  (3 + scan_col) ; // calculate key value as (row index * 4) + column index
-			} 
-		col_mask = ((col_mask >> 1) | (1<<7)) ; // shift row mask to scan next row
-		}
+    for (uint8_t col = 0; col < 4; col++) {
 
-	return -1;
+        // Pull COL down LOW
+        PORTB &= ~(1 << col);
+        _delay_us(5);
+
+        uint8_t rowPins = PINC & 0x0F; // đọc PC0..PC3
+
+        if (!(rowPins & (1 << PC0))) return col +  0;  // row 0
+        if (!(rowPins & (1 << PC1))) return col +  4;  // row 1
+        if (!(rowPins & (1 << PC2))) return col +  8;  // row 2
+        if (!(rowPins & (1 << PC3))) return col + 12;  // row 3
+
+        // Pull up
+        PORTB |= (1 << col);
+    }
+
+    return -1;
 }
 //-------------------------------------------------------------
 void UART_Init() {
@@ -50,10 +53,10 @@ void UART_Init() {
     UBRR0H = 0;
     UBRR0L = 103;
 
-    // Kích hoạt truyền và nhận
+    // Active receive and transmit
     UCSR0B = (1 << TXEN0);
 
-    // Cấu hình định dạng khung: 8 bit dữ liệu, 1 bit dừng
+    // 8 bit data, 1 bit stop
     UCSR0C = (1 << UCSZ01) | (1 << UCSZ00);
 }
 
@@ -85,28 +88,42 @@ int main() {
     sei();
 
     while (1) {
-        key = Keypad_Scan();
+        
+		key = Keypad_Scan();
 
         if (key != -1) { // Nếu có phím được nhấn
-            if (last_key == -1) { // Nếu đây là lần đầu tiên phím được nhấn
+            if (last_key == -1) { // Phím mới vừa được nhấn lần đầu
                 last_key = key;
                 key_press_time = 0;
-            } else if (key == last_key) { // Nếu phím vẫn đang được giữ
+
+            } else if (key == last_key) { // Phím đang được giữ
                 key_press_time++;
-                if (key_press_time >= 1000) { // Nếu phím được giữ trong 1s
+
+                if (key_press_time >= 500) { // Giữ 1 giây
                     key_press_time = 0;
-                    UART_Trans('0'  + key);
+
+                    // ----- MAPPING OUTPUT -----
+                    if (key >= 0 && key <= 9) {
+                        UART_Trans('0' + key);  // 0–9
+                    }
+                    else if (key >= 10 && key <= 15) {
+                        UART_Trans('A' + (key - 10)); // 10→A ... 15→F
+                    }
                     UART_Trans('\n');
+                    // ---------------------------
                 }
-            } else { // Nếu một phím khác được nhấn
+
+            } else { // Phím khác được nhấn
                 last_key = key;
                 key_press_time = 0;
             }
-        } else { // Nếu không có phím nào được nhấn
+
+        } else { // Không có phím nào
             last_key = -1;
         }
-        _delay_ms(1); // Đợi 1ms trước khi quét lại
 
+        _delay_ms(1);
+        
 
   // ENCODERS
   posUpDown = upDown.read(); //Up/down encoder
