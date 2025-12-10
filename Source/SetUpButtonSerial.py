@@ -1,34 +1,56 @@
-import serial
 import pyautogui
 import subprocess
 import webbrowser
-# Mở cổng COM
-ser = serial.Serial('COM5', 9600)
-# Đường dẫn đến ứng dụng
-app_path = "đường dẫn đến ứng dụng của bạn"
+import serial
+import os
 
-# Đường dẫn đến trang web
-web_path = "đường dẫn đến trang web của bạn"
+#Connect to COM port
+ser = serial.Serial('COM4', 9600)
+
+def open_path(x):
+    if x.startswith("http"):
+        webbrowser.open(x)
+    else:
+        os.startfile(x)
+
+path = r"D:/Dai_hoc/TKHTN"
+url = "https://mybk.hcmut.edu.vn/my/index.action"
+
+pyautogui.PAUSE = 0
+actions = {
+    "0": lambda: pyautogui.hotkey('ctrl', 'c'),
+    "1": lambda: pyautogui.hotkey('ctrl', 'v'),
+    "2": lambda: pyautogui.hotkey('ctrl', 'a'),
+    "3": lambda: pyautogui.hotkey('win', 'printscreen'),
+    
+    "4": lambda: pyautogui.hotkey('ctrl','b'),
+    "5": lambda: pyautogui.hotkey('ctrl','i'),
+    "6": lambda: pyautogui.hotkey('ctrl','e'),
+    "7": lambda: pyautogui.hotkey('ctrl','n'),
+    
+    "8": lambda: webbrowser.open(url),
+    "9": lambda: open_path(path),
+    ":": lambda: pyautogui.hotkey('alt','f4'),
+    ";": lambda: pyautogui.hotkey('alt','z'),
+    
+    "<": lambda: pyautogui.hotkey('volumemute'),
+    "=": lambda: open_path(r"C:/Windows/System32/calc.exe"),
+    ">": lambda: open_path(r"C:/Windows/explorer.exe"),
+    "?": lambda: webbrowser.open("https://www.youtube.com"),
+    
+    # Encoder
+    "L": lambda: pyautogui.hotkey('volumeup'),
+    "X": lambda: pyautogui.hotkey('volumedown'),
+    "P": lambda: pyautogui.hotkey('ctrl', '+'),
+    "T": lambda: pyautogui.hotkey('ctrl', '-'),
+}
+
+print("Ready...")
+
 while True:
-    if ser.in_waiting > 0:
-        value = ser.readline().decode().strip() # Đọc giá trị từ cổng COM
-        if value == '0':
-            pyautogui.hotkey('ctrl', 'c')  # Copy
-        elif value == '1':
-            pyautogui.hotkey('ctrl', 'v')  # Paste
-        elif value == '2':
-           subprocess.Popen(app_path)
-        elif value == '3':
-            webbrowser.open(web_path)
-        elif value == '4':
-            pyautogui.hotkey('volumemute') # Mute
-        elif value == '5':
-            pyautogui.hotkey('volumemute') # Unmute (cùng hotkey với Mute)
-        elif value == 'X':
-            pyautogui.hotkey('volumedown') # Unmute (cùng hotkey với Mute)
-        elif value == 'L':
-            pyautogui.hotkey('volumeup') # Unmute (cùng hotkey với Mute)
-        elif value == 'T':
-            pyautogui.hotkey('ctrl', '-') # Unmute (cùng hotkey với Mute)
-        elif value == 'P':
-            pyautogui.hotkey('ctrl', '+') # Unmute (cùng hotkey với Mute)
+    if ser.in_waiting:
+        v = ser.readline().decode().strip()
+        print("Received:", v)
+
+        if v in actions:
+            actions[v]()
